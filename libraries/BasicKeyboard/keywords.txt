@@ -1,0 +1,9 @@
+# Datatypes
+BasicKeyboard	KEYWORD1
+
+# Methods and Functions
+press	KEYWORD2
+release	KEYWORD2
+releaseAll	KEYWORD2
+
+# Constants

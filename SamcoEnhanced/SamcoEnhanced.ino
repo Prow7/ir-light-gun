@@ -69,7 +69,6 @@
 #include <HID.h>
 #endif
 
-#include <Keyboard.h>
 #include <Wire.h>
 #ifdef DOTSTAR_ENABLE
 #include <Adafruit_DotStar.h>
@@ -82,6 +81,7 @@
 #endif // SAMCO_FLASH_ENABLE
 #include <AbsMouse5.h>
 #include <DFRobotIRPositionEx.h>
+#include <BasicKeyboard.h>
 #include <LightgunButtons.h>
 #include <SamcoPositionEnhanced.h>
 #include <SamcoConst.h>
@@ -105,7 +105,7 @@ void rp2040pwmIrq(void);
 // not required after discoverving the DFRobotIRPositionEx atomic read technique
 //#define EXTRA_POS_GLITCH_FILTER
 
-// numbered index of buttons, must match ButtonDesc[] order
+// numbered index of physcial buttons, must match ButtonDesc[] order
 enum ButtonIndex_e {
     BtnIdx_Trigger = 0,
     BtnIdx_A,
@@ -120,7 +120,7 @@ enum ButtonIndex_e {
     BtnIdx_Pedal
 };
 
-// bit mask for each button, must match ButtonDesc[] order to match the proper button events
+// unique bit mask for each physical button, must match ButtonDesc[] order to match the proper button events
 enum ButtonMask_e {
     BtnMask_Trigger = 1 << BtnIdx_Trigger,
     BtnMask_A = 1 << BtnIdx_A,
@@ -138,20 +138,21 @@ enum ButtonMask_e {
 // Button descriptor
 // The order of the buttons is the order of the button bitmask
 // must match ButtonIndex_e order, and the named bitmask values for each button
-// see LightgunButtons::Desc_t, format is: 
+// see LightgunButtons::Desc_t
+// The format is: 
 // {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
 const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {7, LightgunButtons::ReportType_Mouse, MOUSE_LEFT, 20, BTN_AG_MASK, "Trigger"},
-    {A1, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 20, BTN_AG_MASK2, "A"},
-    {A0, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 20, BTN_AG_MASK2, "B"},
-    {A2, LightgunButtons::ReportType_Keyboard, '1', 25, BTN_AG_MASK2, "Start"},
-    {A3, LightgunButtons::ReportType_Keyboard, '5', 25, BTN_AG_MASK2, "Select"},
-    {11, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 25, BTN_AG_MASK2, "Up"},
-    {9, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 25, BTN_AG_MASK2, "Down"},
-    {10, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 25, BTN_AG_MASK2, "Left"},
-    {12, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 25, BTN_AG_MASK2, "Right"},
-    {13, LightgunButtons::ReportType_Internal, MOUSE_BUTTON4, 20, BTN_AG_MASK2, "Reload"},
-    {4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 20, BTN_AG_MASK2, "Pedal"}
+    {7, LightgunButtons::ReportType_Mouse, MOUSE_BTN_LEFT, 20, BTN_AG_MASK, "Trigger"},
+    {A1, LightgunButtons::ReportType_Mouse, MOUSE_BTN_RIGHT, 20, BTN_AG_MASK2, "A"},
+    {A0, LightgunButtons::ReportType_Mouse, MOUSE_BTN_MIDDLE, 20, BTN_AG_MASK2, "B"},
+    {A2, LightgunButtons::ReportType_Keyboard, KEY_1, 25, BTN_AG_MASK2, "Start"},
+    {A3, LightgunButtons::ReportType_Keyboard, KEY_5, 25, BTN_AG_MASK2, "Select"},
+    {11, LightgunButtons::ReportType_Keyboard, KEY_UP, 25, BTN_AG_MASK2, "Up"},
+    {9, LightgunButtons::ReportType_Keyboard, KEY_DOWN, 25, BTN_AG_MASK2, "Down"},
+    {10, LightgunButtons::ReportType_Keyboard, KEY_LEFT, 25, BTN_AG_MASK2, "Left"},
+    {12, LightgunButtons::ReportType_Keyboard, KEY_RIGHT, 25, BTN_AG_MASK2, "Right"},
+    {13, LightgunButtons::ReportType_Internal, MOUSE_BTN_BACKWARD, 20, BTN_AG_MASK2, "Reload"},
+    {4, LightgunButtons::ReportType_Mouse, MOUSE_BTN_FORWARD, 20, BTN_AG_MASK2, "Pedal"}
 };
 
 // button count constant
@@ -175,7 +176,9 @@ typedef struct PauseModeFnEntry_s {
 } PauseModeFnEntry_t;
 */
 
-// button combo to enter pause mode
+// button combo to exit normal running mode and enter pause mode
+// this should be a unique combination you will never use during gameplay,
+// or a button with ReportType_Internal
 constexpr uint32_t EnterPauseModeBtnMask = BtnMask_Reload;
 
 // press any button to enter pause mode from Processing mode (this is not a button combo)
@@ -453,32 +456,29 @@ unsigned long lastPrintMillis = 0;
 
 // USB HID Report ID
 enum HID_RID_e{
-  HID_RID_KEYBOARD = 1,
-  HID_RID_MOUSE
+    HID_RID_KEYBOARD = 1,
+    HID_RID_MOUSE
 };
 
 // HID report descriptor using TinyUSB's template
-uint8_t const desc_hid_report[] = {
-  TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
-  TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_RID_MOUSE))
+uint8_t const hidReportDesc[] = {
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
+    TUD_HID_REPORT_DESC_ABSMOUSE5_BASIC(HID_REPORT_ID(HID_RID_MOUSE))
 };
 
+// USB HID instance
 Adafruit_USBD_HID usbHid;
 
-int __USBGetKeyboardReportID()
-{
-    return HID_RID_KEYBOARD;
-}
+// BasicKeyboard instance
+BasicKeyboard_ BasicKeyboard(HID_RID_KEYBOARD);
 
 // AbsMouse5 instance
 AbsMouse5_ AbsMouse5(HID_RID_MOUSE);
 
-#else
-// AbsMouse5 instance
-AbsMouse5_ AbsMouse5(1);
-#endif
+#endif // USE_TINYUSB
 
-void setup() {
+void setup()
+{
     // init DotStar and/or NeoPixel to red during setup()
 #ifdef DOTSTAR_ENABLE
     dotstar.begin();
@@ -521,7 +521,7 @@ void setup() {
     
 #ifdef USE_TINYUSB
     usbHid.setPollInterval(2);
-    usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
+    usbHid.setReportDescriptor(hidReportDesc, sizeof(hidReportDesc));
     //usb_hid.setStringDescriptor("TinyUSB HID Composite");
 
     usbHid.begin();
@@ -763,7 +763,22 @@ void NoHardwareTimerCamTickMillis()
 }
 #endif // SAMCO_NO_HW_TIMER
 
-void loop() {
+// Periodic yield to run USB tasks. Maybe only required for TinyUSB.
+unsigned long lastYieldMillis = 0;
+inline void USBYield()
+{
+    // how frequently should yield() be called? gallop2WhoKnows
+    // I searched the TinyUSB GitHub discussions and didn't find a definitive answer
+    if(millis() - lastYieldMillis >= 2) {
+        yield();
+        lastYieldMillis = millis();
+    }
+}
+
+void loop()
+{
+    USBYield();
+
     SAMCO_NO_HW_TIMER_UPDATE();
     
     // poll/update button states with 1ms interval so debounce mask is more effective
@@ -851,7 +866,6 @@ void loop() {
 #ifdef DEBUG_SERIAL
     PrintDebugSerial();
 #endif // DEBUG_SERIAL
-
 }
 
 /*        -----------------------------------------------        */
@@ -867,6 +881,8 @@ void ExecRunMode()
     moveIndex = 0;
     buttons.ReportEnable();
     for(;;) {
+        USBYield();
+
         buttons.Poll(0);
 
         SAMCO_NO_HW_TIMER_UPDATE();
@@ -917,6 +933,8 @@ void ExecRunMode()
         if(buttons.pressedReleased == EnterPauseModeBtnMask) {
             SetMode(GunMode_Pause);
             buttons.ReportDisable();
+            AbsMouse5.releaseAll();
+            BasicKeyboard.releaseAll();
             return;
         }
 
@@ -936,6 +954,8 @@ void ExecRunModeProcessing()
 
     buttons.ReportDisable();
     for(;;) {
+        USBYield();
+
         buttons.Poll(1);
         if(buttons.pressedReleased & EnterPauseModeProcessingBtnMask) {
             SetMode(GunMode_Pause);

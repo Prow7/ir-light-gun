@@ -15,7 +15,8 @@
 #include "AbsMouse5.h"
 
 #if defined(_USING_HID)
-static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
+// The Arduino Mouse library uses a fixed report ID value of 1
+static const uint8_t _AbsMouse5HIDReportDescriptor[] PROGMEM = {
 	0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
 	0x09, 0x02,        // Usage (Mouse)
 	0xA1, 0x01,        // Collection (Application)
@@ -30,7 +31,7 @@ static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 	0x95, 0x05,        //     Report Count (5)
 	0x75, 0x01,        //     Report Size (1)
 	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0x95, 0x01,        //     Report Count (1)
+	0x95, 0x01,        //     Report Count (1) (3 bit padding)
 	0x75, 0x03,        //     Report Size (3)
 	0x81, 0x03,        //     Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
 	0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
@@ -46,13 +47,16 @@ static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 	0xC0,              //   End Collection
 	0xC0               // End Collection
 };
+
+// AbsMouse5 instance
+AbsMouse5_ AbsMouse5(1);
 #endif // _USING_HID
 
 AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0), _width(32767l), _height(32767l), _autoReport(true)
 {
 #if defined(_USING_HID)
-	static HIDSubDescriptor descriptorNode(HID_REPORT_DESCRIPTOR5, sizeof(HID_REPORT_DESCRIPTOR5));
-	HID().AppendDescriptor(&descriptorNode);
+	static HIDSubDescriptor descriptor(_AbsMouse5HIDReportDescriptor, sizeof(_AbsMouse5HIDReportDescriptor));
+	HID().AppendDescriptor(&descriptor);
 #endif // _USING_HID
 }
 
@@ -67,46 +71,50 @@ void AbsMouse5_::report(void)
 {
 	uint8_t buffer[5];
 	buffer[0] = _buttons;
-	buffer[1] = _x & 0xFF;
-	buffer[2] = (_x >> 8) & 0xFF;
-	buffer[3] = _y & 0xFF;
-	buffer[4] = (_y >> 8) & 0xFF;
+	buffer[1] = (uint8_t)_x;
+	buffer[2] = (uint8_t)(_x >> 8);
+	buffer[3] = (uint8_t)_y;
+	buffer[4] = (uint8_t)(_y >> 8);
 #if defined(_USING_HID)
-	HID().SendReport(_reportId, buffer, 5);
+	// the descriptor above and Arduino Mouse library use a fixed report ID of 1
+	HID().SendReport(1, buffer, 5);
 #endif // _USING_HID
 #if defined(USE_TINYUSB)
+	if (TinyUSBDevice.suspended())  {
+		TinyUSBDevice.remoteWakeup();
+	}
+	while (!tud_hid_ready()) yield();
 	tud_hid_report(_reportId, buffer, 5);
+	yield();
 #endif // USE_TINYUSB
 }
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
 {
-	x = (uint16_t)((32767l * ((uint32_t)x)) / _width);
-	y = (uint16_t)((32767l * ((uint32_t)y)) / _height);
+	x = (uint16_t)((32767ul * ((uint32_t)x)) / _width);
+	y = (uint16_t)((32767ul * ((uint32_t)y)) / _height);
 
 	if(x != _x || y != _y) {
 		_x = x;
 		_y = y;
-		if(_autoReport) {
-			report();
-		}
+		autoreport();
 	}
 }
 
 void AbsMouse5_::press(uint8_t button) 
 {
-	_buttons |= button;
-
-	if(_autoReport) {
-		report();
+	const uint8_t new_buttons = _buttons | button;
+	if(new_buttons != _buttons) {
+		_buttons = new_buttons;
+		autoreport();
 	}
 }
 
 void AbsMouse5_::release(uint8_t button)
 {
-	_buttons &= ~button;
-
-	if(_autoReport) {
-		report();
+	const uint8_t new_buttons = _buttons & ~button;
+	if(new_buttons != _buttons) {
+		_buttons = new_buttons;
+		autoreport();
 	}
 }

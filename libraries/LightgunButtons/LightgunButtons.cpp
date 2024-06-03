@@ -20,7 +20,7 @@
 
 #include <Arduino.h>
 #include <AbsMouse5.h>
-#include <Keyboard.h>
+#include <BasicKeyboard.h>
 #include "LightgunButtons.h"
 
 LightgunButtons::LightgunButtons(Data_t _data, unsigned int _count) :
@@ -135,7 +135,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                         if(btn.reportType == ReportType_Mouse) {
                             AbsMouse5.press(btn.reportCode);
                         } else if(btn.reportType == ReportType_Keyboard) {
-                            Keyboard.press(btn.reportCode);
+                            BasicKeyboard.press(btn.reportCode);
                         }
                     }
 
@@ -158,7 +158,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                         if(btn.reportType == ReportType_Mouse) {
                             AbsMouse5.release(btn.reportCode);
                         } else if(btn.reportType == ReportType_Keyboard) {
-                            Keyboard.release(btn.reportCode);
+                            BasicKeyboard.release(btn.reportCode);
                         }
                     }
 

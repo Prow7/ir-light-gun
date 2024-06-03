@@ -15,26 +15,49 @@ Based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/sa
 - Built in Processing mode for use with the SAMCO Processing sketch
 
 ## Requirements
-- Adafruit ItsyBitsy M0, M4, RP2040, ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz
+- Adafruit ItsyBitsy M0, M4, RP2040 (or any SAMD21, SAMD51, or RP2040 dev board)
 - DFRobot IR Positioning Camera (SEN0158)
 - 4 IR LED emitters
+- Arduino development environment
 
-With minor modifications it should work with any SAMD21, SAMD51, or ATmega32U4 16MHz boards. See the SAMCO project for build details: https://github.com/samuelballantyne/IR-Light-Gun
+With minor modifications it should work with any SAMD21, SAMD51, or RP2040 boards. See the SAMCO project for build details: https://github.com/samuelballantyne/IR-Light-Gun
 
-I recommend using an ItsyBitsy M0, M4, or RP2040 to future proof your build since there is way more memory, they are much faster, and the build is super easy if you use a SAMCO PCB. The ATmega32U4 builds are almost out of code space.
+Note that SAMCO PCBs only offically support the ItsyBitsy M0 or M4. The ItsyBitsy RP2040 should be pin compatible but hasn't been confirmed.
+
+The sketch is configured with buttons for a SAMCO GunCon 2 PCB.
+
+The ATmega32U4 is no longer officially supported.
 
 ## IR Emitter setup
 The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, you can use 2 Wii sensor bars; one on top of your screen and one below.
+
+## Arduino Board Dependencies
+Be sure to install the appropriate boards in the Adruino Boards Manager.
+#### RP2040
+- [Earle F. Philhower Arduino-Pico](https://github.com/earlephilhower/arduino-pico)
+#### SAMD
+- Arduino SAMD Boards
+- Adafruit SAMD Boards (ItsyBitsy M0, M4, or other Adafruit SAMD board)
 
 ## Arduino Library Dependencies
 Be sure to have the following libraries installed depending on the board you are using (or just install them all).
 - Adafruit DotStar (for ItsyBitsy M0 and M4)
 - Adafruit NeoPixel (for ItsyBitsy RP2040)
 - Adafruit SPI Flash (for ItsyBitsy M0 and M4)
-- Adafruit TinyUSB (for ItsyBitsy RP2040)
+- Adafruit TinyUSB (included for SAMD and RP2040 boards. Required for ItsyBitsy RP2040, can also be used for SAMD)
+
+## Included libraries
+Copy all folders under [libraries](../libraries/) to your Arduino `libraries` folder.
+- AbsMouse5 - 5 button absolute positioning USB HID mouse device
+- BasicKeyboard - Basic USB HID keyboard device
+- DFRobotIRPositionEx - Modified DFRobot IR Positioning Camera library
+- LightgunButtons - Library to handle the physical buttons
+- SamcoPositionEnhanced - Slightly modified SAMCO positioning maths
 
 ## Compiling and Configuration Options
-If you are using an ItsyBitsy M0 or M4 then I recommend you set the Optimize option to -O3 (or faster). If you are using an ItsyBitsy RP2040 then I recommend the -O3 Optimize option. If you are using an ItsyBitsy M4 (or any other SAMD51 board) then set the CPU Speed to 120 MHz standard. If you are using an ItsyBitsy RP2040 then set the CPU Speed to 125 MHz. There is no need for overclocking. Set the USB Stack option to Arduino except for the ItsyBitsy RP2040, it must use Adafruit TinyUSB.
+If you are using an ItsyBitsy M0 or M4 then I recommend you set the Optimize option to -O3 (or faster). If you are using an ItsyBitsy RP2040 then I recommend the -O3 Optimize option. If you are using an ItsyBitsy M4 (or any other SAMD51 board) then set the CPU Speed to 120 MHz standard. If you are using an ItsyBitsy RP2040 then set the CPU Speed to 125 or 133 MHz. There is no need for overclocking. The ItsyBitsy RP2040 must use the Adafruit TinyUSB stack. The SAMD devices can use either Arduino or TinyUSB USB stack.
+
+> Note: The RP2040 boards tend to default to the `Pico SDK` USB stack so you will see a build error until you switch to TinyUSB.
 
 ## Operation
 The light gun operates as a mouse until the button/combination is pressed to enter pause mode. The Arduino serial monitor (or any serial terminal) can be used to see information while the gun is paused and during the calibration procedure.
