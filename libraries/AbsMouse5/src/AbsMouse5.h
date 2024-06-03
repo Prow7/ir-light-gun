@@ -1,6 +1,6 @@
 /*!
  * @file AbsMouse5.h
- * @brief Basic 5 button absolute mouse (no scroll wheel). Supports Arduino and TinyUSB stacks.
+ * @brief Basic 5 button (no scroll wheel) absolute positioning USB HID mouse. Supports Arduino and TinyUSB USB stacks.
  * @n Based on the AbsMouse Arduino library. Modified to be a 5 button device.
  * @n For TinyUSB, include a TUD_HID_REPORT_DESC_ABSMOUSE5_BASIC(RID) in the descriptor report.
  */
@@ -22,6 +22,8 @@
 
 // TinyUSB report descriptor macro for a basic 5 button absolute mouse (no scroll wheel)
 #if defined(USE_TINYUSB)
+#include <Adafruit_TinyUSB.h>
+
 #define TUD_HID_REPORT_DESC_ABSMOUSE5_BASIC(...) \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP      )                   ,\
   HID_USAGE      ( HID_USAGE_DESKTOP_MOUSE     )                   ,\

@@ -1,5 +1,5 @@
 /**
- * Basic USB HID keyboard library. This implements a basic USB HID keyboard device with the keys
+ * Basic USB HID keyboard library. This implements a basic USB HID keyboard with the keys
  * defined in the "Keyboard/Keypad Page (0x07)" section in the HID Usage Tables for USB document.
  * https://usb.org/document-library/hid-usage-tables-15
  * 
